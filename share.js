@@ -57,7 +57,8 @@
   const ctx = canvas.getContext('2d');
   const shareButton = dialog.querySelector('[data-act=share]');
   const copyButton = dialog.querySelector('[data-act=copy]');
-  let opener, card, dark, photo, blob, canShareImage;
+  let card, dark, photo, blob, canShareImage;
+  let drawVersion = 0;
 
   // Same logo as the page header
   const logo = new Image();
@@ -118,12 +119,17 @@
   }
 
   function draw() {
+    if (!card?.isConnected) return;
+    const version = ++drawVersion;
     const t = themes[+dark];
     const name = card.querySelector('h2').textContent;
     const badge = card.querySelector('.badge');
     const result = badge.textContent;
+    const quote = card.querySelector('.said p').textContent;
+    const check = card.querySelector(':scope > p').textContent;
     const cy = TOP + 72;
 
+    canvas.setAttribute('aria-label', `Prévia da imagem em formato story. ${name}. Disse que: ${quote}. Veredito: ${result}. Verificação: ${check}`);
     blob = null;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
@@ -164,7 +170,6 @@
     ctx.fillText(date, colX, cy + 44);
 
     // "Disse que": the quote shrinks until it fits in 5 lines
-    const quote = card.querySelector('.said p').textContent;
     const quoteW = R - X - 108;
     let size = 66, lines;
     do {
@@ -199,7 +204,7 @@
     label('Verificação:', X, checkY, t.muted);
     font(400, 42);
     ctx.fillStyle = t.ink2;
-    wrap(card.querySelector(':scope > p').textContent, R - X, Math.max(1, Math.min(4, room)))
+    wrap(check, R - X, Math.max(1, Math.min(4, room)))
       .forEach((l, i) => ctx.fillText(l, X, checkTextY + i * 63));
 
     ctx.fillStyle = t.line;
@@ -215,7 +220,9 @@
     ctx.fillText('verifiqueosfatos.com', R, rowY + 35);
 
     // Ready ahead of time so "Compartilhar imagem" keeps the click's user activation
-    canvas.toBlob(b => blob = b, 'image/png');
+    canvas.toBlob(b => {
+      if (version === drawVersion && card?.isConnected && dialog.open) blob = b;
+    }, 'image/png');
   }
 
   const slug = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -266,7 +273,7 @@
     photo = null;
     img.src = card.querySelector('img').currentSrc || card.querySelector('img').src;
     img.decode().then(() => {
-      if (card !== current) return;
+      if (card !== current || !current.isConnected) return;
       photo = img;
       draw();
     }).catch(() => {});
@@ -278,13 +285,31 @@
     draw();
   }
 
+  function syncCard() {
+    if (!card) return false;
+    const current = document.getElementById(card.id);
+    if (!current) {
+      dialog.close();
+      return false;
+    }
+    if (current !== card) {
+      card = current;
+      loadPhoto();
+      draw();
+    }
+    return true;
+  }
+
+  const observer = new MutationObserver(syncCard);
+
   // Called by the loader in index.html after share.css and share.js arrive
   self.openShare = button => {
-    opener = button;
-    card = button.closest('.card');
+    card = document.getElementById(button.closest('.card').id);
+    if (!card) return;
     loadPhoto();
     setLook(document.documentElement.dataset.theme === 'dark');
     dialog.showModal();
+    observer.observe(card.parentNode, { childList: true });
   };
 
   dialog.addEventListener('click', e => {
@@ -293,11 +318,17 @@
     const b = e.target.closest('button');
     if (!b) return;
     if (b.classList.contains('sh-close')) dialog.close();
+    else if (!syncCard()) return;
     else if (b.dataset.dark) setLook(b.dataset.dark === '1');
     else if (b.dataset.act === 'share-image') shareImage();
     else if (b.dataset.act === 'share') share();
     else if (b.dataset.act === 'copy') copy();
   });
 
-  dialog.addEventListener('close', () => opener && opener.focus());
+  dialog.addEventListener('close', () => {
+    if (dialog.open) return;
+    observer.disconnect();
+    (document.getElementById(card?.id)?.querySelector('.story') || document.querySelector('.theme')).focus();
+    card = photo = blob = null;
+  });
 })();
