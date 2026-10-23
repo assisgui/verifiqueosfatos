@@ -547,3 +547,65 @@ main.loading:empty::after {
   cursor: pointer;
 }
 /* SHARE: fim */
+
+/* Search + tag chips */
+.search {
+  margin: 0 0 16px;
+}
+
+.search input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  font: inherit;
+}
+
+.search input:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.empty {
+  margin: 0;
+  color: var(--muted);
+  text-align: center;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.chip {
+  padding: 4px 10px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chip:hover {
+  color: var(--ink);
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}

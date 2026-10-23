@@ -66,7 +66,13 @@
       <div class="thermo-scale" aria-hidden="true"><span>Falso</span><span>Parcial</span><span>Verdadeiro</span></div>
     </section>
 
+    <form class="search" role="search" onsubmit="return false">
+      <label for="q" class="sr">Buscar checagens</label>
+      <input id="q" type="search" placeholder="Buscar por fala, tema ou tag" autocomplete="off" />
+    </form>
+
     <main class="article-grid loading"></main>
+    <p id="empty" class="empty sr" role="status"></p>
 
     <footer class="foot">
       <details class="how">
@@ -177,9 +183,18 @@
       return parts.length ? `<div class="meta">${parts.join(' ')}</div>` : '';
     }
 
+    const norm = str => String(str ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const tagsOf = item => Array.isArray(item.g) ? item.g.filter(g => typeof g === 'string' && g.trim()) : [];
+
+    function createChipsHTML(item) {
+      const tags = tagsOf(item);
+      return tags.length ? `<div class="chips">${tags.map(g => `<button type="button" class="chip" data-g="${escapeHTML(g)}">${escapeHTML(g)}</button>`).join('')}</div>` : '';
+    }
+
     function createCard(item) {
       const el = document.createElement('article');
       el.className = 'card';
+      el.dataset.q = norm([item.t, item.a, ...tagsOf(item)].join(' '));
       el.innerHTML = `
         ${createMetaHTML(item)}
         <header>
@@ -197,7 +212,8 @@
         <span class="label">Verificação:</span>
         <p>${escapeHTML(item.v)}</p>
         ${createFixHTML(item.e)}
-        ${createSourcesHTML(item.s)}`;
+        ${createSourcesHTML(item.s)}
+        ${createChipsHTML(item)}`;
       el.addEventListener('animationend', () => el.classList.remove('new'), { once: true });
       return el;
     }
@@ -228,6 +244,40 @@
     function canRender(item) {
       return !!(item && labels.n[item.n] && labels.c[item.c] && item.t != null && item.t !== '');
     }
+
+    const search = document.getElementById('q');
+    const empty = document.getElementById('empty');
+
+    // Hides non-matching cards in place (no re-render); also reflects the query in ?q=
+    function applyFilter() {
+      const q = norm(search.value).trim();
+      let shown = 0;
+      for (const el of nodes.values()) {
+        el.hidden = !!q && !el.dataset.q.includes(q);
+        if (!el.hidden) shown++;
+      }
+      // Always in the DOM so screen readers announce the text change; hidden before the first fetch
+      const none = !!q && nodes.size > 0 && shown === 0;
+      empty.textContent = none ? 'Nenhuma checagem encontrada.' : '';
+      empty.classList.toggle('sr', !none);
+      const url = new URL(location.href);
+      if (search.value.trim()) url.searchParams.set('q', search.value.trim());
+      else url.searchParams.delete('q');
+      history.replaceState(null, '', url.pathname + url.search + url.hash);
+    }
+
+    let filterTimer;
+    search.addEventListener('input', () => {
+      clearTimeout(filterTimer);
+      filterTimer = setTimeout(applyFilter, 150);
+    });
+    main.addEventListener('click', e => {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      search.value = chip.dataset.g;
+      applyFilter();
+    });
+    search.value = new URLSearchParams(location.search).get('q') || '';
 
     // Renders posts newest-first. Returns false if raw is not a valid posts array.
     function render(raw) {
@@ -281,11 +331,12 @@
       lastRaw = raw;
       currentPosts = items;
       renderThermo(items.filter(canRender));
+      applyFilter();
 
       const shared = location.hash && document.getElementById(location.hash.slice(1));
       if (shared) {
         shared.classList.add('shared');
-        history.replaceState(null, '', location.pathname);
+        history.replaceState(null, '', location.pathname + location.search);
         setTimeout(() => shared.scrollIntoView({ block: 'center' }), 400);
       }
 
