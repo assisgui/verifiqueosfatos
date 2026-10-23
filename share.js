@@ -57,7 +57,7 @@
   const ctx = canvas.getContext('2d');
   const shareButton = dialog.querySelector('[data-act=share]');
   const copyButton = dialog.querySelector('[data-act=copy]');
-  let card, dark, photo, blob, canShareImage;
+  let card, dark, photo, photoPending, photoReady, blob, canShareImage;
   let drawVersion = 0;
 
   // Same logo as the page header
@@ -219,8 +219,9 @@
     ctx.fillStyle = t.muted;
     ctx.fillText('verifiqueosfatos.com', R, rowY + 35);
 
-    // Ready ahead of time so "Compartilhar imagem" keeps the click's user activation
-    canvas.toBlob(b => {
+    // Ready ahead of time so "Compartilhar imagem" keeps the click's user activation.
+    // Not while the photo loads, so an image without it can never be shared
+    if (!photoPending) canvas.toBlob(b => {
       if (version === drawVersion && card?.isConnected && dialog.open) blob = b;
     }, 'image/png');
   }
@@ -260,7 +261,7 @@
   // Safari only keeps the click's user activation if the ClipboardItem gets a promise
   function copy() {
     const label = copyButton.querySelector('span');
-    navigator.clipboard.write([new ClipboardItem({ 'image/png': new Promise(r => canvas.toBlob(r, 'image/png')) })])
+    navigator.clipboard.write([new ClipboardItem({ 'image/png': photoReady.then(() => new Promise(r => canvas.toBlob(r, 'image/png'))) })])
       .then(() => {
         label.textContent = 'Imagem copiada!';
         setTimeout(() => label.textContent = 'Copiar imagem', 2000);
@@ -271,12 +272,15 @@
   function loadPhoto() {
     const current = card, img = new Image();
     photo = null;
+    photoPending = true;
     img.src = card.querySelector('img').currentSrc || card.querySelector('img').src;
-    img.decode().then(() => {
+    photoReady = img.decode().then(() => {
+      if (card === current && current.isConnected) photo = img;
+    }, () => {}).then(() => {
       if (card !== current || !current.isConnected) return;
-      photo = img;
+      photoPending = false;
       draw();
-    }).catch(() => {});
+    });
   }
 
   function setLook(isDark) {
