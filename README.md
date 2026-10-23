@@ -72,6 +72,7 @@ Este arquivo deve servir um Array de objetos com a seguinte estrutura:
     "c": 1,
     "h": "21:34",
     "a": "Saúde",
+    "g": ["sus", "vacinas"],
     "t": "Aqui estará a declaração feita pelo candidato descrita o mais fielmente possível",
     "v": "Aqui estará a verificação feita, com fontes e referências.",
     "s": ["https://www.ibge.gov.br/", "https://www.bcb.gov.br/"]
@@ -87,6 +88,7 @@ Onde:
 - `"c"` é o check status, 1 para Verdadeiro, 2 para Falso e 3 para Parcial
 - `"h"` (opcional) é o horário em que a fala aconteceu no debate, no formato HH:MM (ex: "21:34"). Aparece no topo do card
 - `"a"` (opcional) é o tema/assunto da fala, ex: "Saúde", "Economia", "Segurança". Aparece ao lado do horário, no topo do card
+- `"g"` (opcional) são as tags da fala: um array de strings não vazias e únicas (sem diferenciar maiúsculas), ex: ["sus", "vacinas"]. Aparecem como chips no card e entram na busca
 - `"t"` é o `text`, basicamente a declaração feita pelo candidato
 - `"v"` é a verificação, ou seja: o texto de demonstrando o que foi verificado
 - `"e"` (opcional) é a errata: um texto não vazio explicando o que foi corrigido, editado no mesmo item do posts.json

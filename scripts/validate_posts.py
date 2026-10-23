@@ -77,6 +77,15 @@ def validate(path: Path) -> list[str]:
             if field in post and not isinstance(post[field], str):
                 errors.append(f"{location}.{field}: expected a string")
 
+        if "g" in post:
+            tags = post["g"]
+            if not isinstance(tags, list) or not all(
+                isinstance(tag, str) and tag.strip() for tag in tags
+            ):
+                errors.append(f"{location}.g: expected an array of non-empty strings")
+            elif len({tag.strip().lower() for tag in tags}) != len(tags):
+                errors.append(f"{location}.g: tags must be unique")
+
         if "s" in post:
             sources = post["s"]
             if not isinstance(sources, list):

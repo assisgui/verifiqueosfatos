@@ -71,6 +71,31 @@ class ValidatePostsTests(unittest.TestCase):
 
                 self.assertTrue(any(f"[0].{field}:" in error for error in errors))
 
+    def test_accepts_missing_or_valid_tags(self) -> None:
+        post = {"id": 1, "n": 1, "c": 1, "t": "Claim", "v": "Check"}
+
+        self.assertEqual(self.validate_value([post]), [])
+
+        post["g"] = ["SUS", "Saúde"]
+        self.assertEqual(self.validate_value([post]), [])
+
+    def test_rejects_tags_that_are_not_an_array_of_non_empty_strings(self) -> None:
+        for tags in ("SUS", ["SUS", 42], ["SUS", "  "]):
+            with self.subTest(tags=tags):
+                post = {"id": 1, "n": 1, "c": 1, "t": "Claim", "v": "Check", "g": tags}
+
+                errors = self.validate_value([post])
+
+                self.assertTrue(any("[0].g: expected an array of non-empty strings" in error for error in errors))
+
+    def test_rejects_duplicate_tags_ignoring_case_and_surrounding_spaces(self) -> None:
+        post = {"id": 1, "n": 1, "c": 1, "t": "Claim", "v": "Check", "g": ["SUS", " sus "]}
+
+        errors = self.validate_value([post])
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("[0].g: tags must be unique", errors[0])
+
     def test_accepts_empty_feed_and_unrecognized_extra_fields(self) -> None:
         post = {"id": 1, "n": 1, "c": 2, "t": "Claim", "v": "Check", "future": True}
 
